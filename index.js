@@ -1,3 +1,3 @@
-const FlowPassworder = require('./lib/flow-passworder');
+const FlowKeyCrypt = require('./lib/flow-key-crypt');
 
-module.exports = FlowPassworder;
+module.exports = FlowKeyCrypt;

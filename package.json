@@ -1,11 +1,11 @@
 {
-  "name": "@aspectron/flow-passworder",
+  "name": "@aspectron/flow-key-crypt",
   "version": "0.0.1",
   "description": "passworder",
   "main": "index.js",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/aspectron/flow-passworder"
+    "url": "git+https://github.com/aspectron/flow-key-crypt"
   },
   "keywords": [],
   "license": "ISC",
