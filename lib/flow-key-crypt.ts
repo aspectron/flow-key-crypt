@@ -1,68 +1,33 @@
-const crypto = require('crypto');
-//const basex = require('base-x');
-//const base58alphabet = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
-//const base58 = basex(base58alphabet);
+import * as crypto from 'crypto';
 
-//var Unibabel = require('browserify-unibabel')
-module.exports = {
 
-	// Simple encryption methods:
-	encrypt,
-	decrypt,
-
-	// More advanced encryption methods:
-	keyFromPassword,
-	encryptWithKey,
-	decryptWithKey,
-
-	// Buffer <-> Hex string methods
-	serializeBufferForStorage,
-	serializeBufferFromStorage,
-
-	generateSalt,
+export const generateSalt = (length:number=32, hash:string="sha256"):string=>{
+	return crypto.createHash(hash).update(crypto.randomBytes(length)).digest('hex');
 }
 
 // Takes a Pojo, returns cypher text.
-function encrypt (password, dataObj) {
+export const encrypt = (password:string, dataObj:any):Promise<string>=>{
 	let salt = generateSalt();
 
 	return keyFromPassword(password, salt)
 	.then(passwordDerivedKey=>{
-		//console.log("passwordDerivedKey", passwordDerivedKey)
+		console.log("passwordDerivedKey", passwordDerivedKey)
 		return encryptWithKey(passwordDerivedKey, dataObj)
 	})
-	.then(payload=>{
+	.then((payload:any)=>{
 		payload.salt = salt
 		return JSON.stringify(payload)
 	})
 }
 
-function encryptWithKey (key, dataObj, algorithm='aes-192-cbc') {
-	
-	/*
-	var vector = global.crypto.getRandomValues(new Uint8Array(16))
-	return global.crypto.subtle.encrypt({
-		name: 'AES-GCM',
-		iv: vector,
-	}, key, dataBuffer).then(function (buf) {
-		var buffer = new Uint8Array(buf)
-		var vectorStr = Unibabel.bufferToBase64(vector)
-		var vaultStr = Unibabel.bufferToBase64(buffer)
-		return {
-			data: vaultStr,
-			iv: vectorStr,
-		}
-	})
-	*/
+export const encryptWithKey = (key:Buffer, dataObj:any, algorithm:string='aes-192-cbc'):Promise<any>=>{
 	return new Promise(resolve=>{
 		let data = JSON.stringify(dataObj)
 
 		crypto.randomFill(new Uint8Array(16), (err, iv) => {
 	    	if (err)
 	    		throw err;
-	    	//key = Buffer.from(key);
-	    	//console.log("key", key.length)
-			const cipher = crypto.createCipheriv(algorithm, key, iv);
+			const cipher = crypto.createCipheriv(algorithm, key.toString("hex"), iv);
 
 		    let encrypted = cipher.update(data, 'utf8', 'hex');
 		    encrypted += cipher.final('hex');
@@ -76,7 +41,7 @@ function encryptWithKey (key, dataObj, algorithm='aes-192-cbc') {
 }
 
 // Takes encrypted text, returns the restored Pojo.
-function decrypt (password, text) {
+export const decrypt = (password:string, text:string)=>{
 	const payload = JSON.parse(text)
 	const salt = payload.salt
 	return keyFromPassword(password, salt)
@@ -85,12 +50,12 @@ function decrypt (password, text) {
 	})
 }
 
-function decryptWithKey (key, payload, algorithm='aes-192-cbc') {
+export const  decryptWithKey = (key:Buffer, payload:any, algorithm='aes-192-cbc')=>{
 	return new Promise(resolve=>{
 		const iv = Buffer.from(payload.iv, 'hex');
-		const decipher = crypto.createDecipheriv(algorithm, key, iv);
+		const decipher = crypto.createDecipheriv(algorithm, key.toString("hex"), iv);
 
-		let decrypted = '';
+		let decrypted = '', chunk;
 		decipher.on('readable', () => {
 		  while (null !== (chunk = decipher.read())) {
 		    decrypted += chunk.toString('utf8');
@@ -107,7 +72,10 @@ function decryptWithKey (key, payload, algorithm='aes-192-cbc') {
 	})
 }
 
-function keyFromPassword (password, salt, iterations=100000, keylen=12, hash="sha512") {
+export const keyFromPassword = (
+		password:string, salt:string, iterations:number=100000,
+		keylen:number=12, hash:string="sha512"): Promise<Buffer> =>{
+
 	return new Promise((resolve)=>{
 		var passBuffer = Buffer.from(password, 'utf8');
 		var saltBuffer = Buffer.from(salt, 'hex');
@@ -117,13 +85,12 @@ function keyFromPassword (password, salt, iterations=100000, keylen=12, hash="sh
 		crypto.pbkdf2(passBuffer, saltBuffer, iterations, keylen, hash, (err, derivedKey) => {
 			if (err)
 				throw err;
-			//console.log(derivedKey.toString('hex'));  // '3745e48...08d59ae'
-			resolve(derivedKey.toString('hex'))
+			resolve(derivedKey)
 		});
 	})
 }
 
-function serializeBufferFromStorage (str) {
+function serializeBufferFromStorage (str:string) {
 	var stripStr = (str.slice(0, 2) === '0x') ? str.slice(2) : str
 	var buf = new Uint8Array(stripStr.length / 2)
 	for (var i = 0; i < stripStr.length; i += 2) {
@@ -134,7 +101,7 @@ function serializeBufferFromStorage (str) {
 }
 
 // Should return a string, ready for storage, in hex format.
-function serializeBufferForStorage (buffer) {
+function serializeBufferForStorage (buffer:Buffer) {
 	var result = '0x'
 	var len = buffer.length || buffer.byteLength
 	for (var i = 0; i < len; i++) {
@@ -143,14 +110,10 @@ function serializeBufferForStorage (buffer) {
 	return result
 }
 
-function unprefixedHex (num) {
+function unprefixedHex (num:number) {
 	var hex = num.toString(16)
 	while (hex.length < 2) {
 		hex = '0' + hex
 	}
 	return hex
-}
-
-function generateSalt(length=32, hash="sha256"){
-	return crypto.createHash(hash).update(crypto.randomBytes(length)).digest('hex');
 }
