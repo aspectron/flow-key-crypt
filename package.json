@@ -1,7 +1,7 @@
 {
   "name": "@aspectron/flow-key-crypt",
-  "version": "0.0.2",
-  "description": "passworder",
+  "version": "0.0.3",
+  "description": "flow-key-crypt",
   "main": "dist/index.js",
   "repository": {
     "type": "git",
@@ -30,7 +30,7 @@
     "url": "https://aspectron.com"
   },
   "files": [
-    "index.js",
+    "index.ts",
     "lib",
     "README.md",
     "LICENSE",
