@@ -1,5 +1,41 @@
 import * as crypto from 'crypto';
 
+export const writeBuffer = (text:string|Buffer, appendTo?:Buffer):Buffer=>{
+	let textBuf = Buffer.from(text);
+	let lengthBuf = Buffer.alloc(4);
+	lengthBuf.writeUInt32LE(textBuf.length);
+	if(appendTo)
+		return Buffer.concat([appendTo, lengthBuf, textBuf])
+	return Buffer.concat([lengthBuf, textBuf])
+}
+
+export const writeBuffers = (...args:string[]):Buffer=>{
+
+	let buf = writeBuffer(args[0]);
+	args.slice(1).map(arg=>{
+		buf = writeBuffer(arg, buf);
+	})
+	
+	return buf;
+}
+
+export const readBuffers = (buf:Buffer|string):Buffer[]=>{
+	let input = typeof buf=='string'?Buffer.from(buf, "hex"):buf;
+	let bufs:Buffer[] = [];
+	let pos = 0;
+	let read = ()=>{
+		let length = input.readUInt16LE();
+		let end = 4+length;
+		//console.log("length", length, "end", end)
+		let textBuf = input.slice(4, end);
+		bufs.push(textBuf);
+		input = input.slice(end)
+		if(input.length)
+			read();
+	}
+	read();
+	return bufs
+}
 
 export const generateSalt = (length:number=32, hash:string="sha256"):string=>{
 	return crypto.createHash(hash).update(crypto.randomBytes(length)).digest('hex');
@@ -11,12 +47,14 @@ export const encrypt = (password:string, dataObj:any):Promise<string>=>{
 
 	return keyFromPassword(password, salt)
 	.then(passwordDerivedKey=>{
-		console.log("passwordDerivedKey", passwordDerivedKey)
+		//console.log("passwordDerivedKey", passwordDerivedKey)
 		return encryptWithKey(passwordDerivedKey, dataObj)
 	})
 	.then((payload:any)=>{
-		payload.salt = salt
-		return JSON.stringify(payload)
+		let {iv, data} = payload;
+		let buf = writeBuffers(salt, iv, data);
+		return buf.toString("hex");
+		//return JSON.stringify(payload)
 	})
 }
 
@@ -42,8 +80,16 @@ export const encryptWithKey = (key:Buffer, dataObj:any, algorithm:string='aes-19
 
 // Takes encrypted text, returns the restored Pojo.
 export const decrypt = (password:string, text:string)=>{
-	const payload = JSON.parse(text)
-	const salt = payload.salt
+	let payload:{data:string, iv:string, salt:string} = {data:"", iv:"", salt:""};
+	if(text.indexOf("{") >-1){
+		payload = JSON.parse(text)
+	}else{
+		let [salt, iv, data] = readBuffers(text).map(b=>b.toString());
+		payload.salt = salt;
+		payload.iv = iv;
+		payload.data = data;
+	}
+	const {salt} = payload
 	return keyFromPassword(password, salt)
 	.then(key=>{
 		return decryptWithKey(key, payload)
@@ -90,7 +136,7 @@ export const keyFromPassword = (
 	})
 }
 
-function serializeBufferFromStorage (str:string) {
+export const serializeBufferFromStorage = (str:string)=>{
 	var stripStr = (str.slice(0, 2) === '0x') ? str.slice(2) : str
 	var buf = new Uint8Array(stripStr.length / 2)
 	for (var i = 0; i < stripStr.length; i += 2) {
@@ -101,7 +147,7 @@ function serializeBufferFromStorage (str:string) {
 }
 
 // Should return a string, ready for storage, in hex format.
-function serializeBufferForStorage (buffer:Buffer) {
+export const serializeBufferForStorage = (buffer:Buffer)=>{
 	var result = '0x'
 	var len = buffer.length || buffer.byteLength
 	for (var i = 0; i < len; i++) {
@@ -110,7 +156,7 @@ function serializeBufferForStorage (buffer:Buffer) {
 	return result
 }
 
-function unprefixedHex (num:number) {
+export const unprefixedHex = (num:number)=>{
 	var hex = num.toString(16)
 	while (hex.length < 2) {
 		hex = '0' + hex
