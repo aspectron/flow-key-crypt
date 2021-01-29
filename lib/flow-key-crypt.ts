@@ -1,7 +1,7 @@
 import * as crypto from 'crypto';
 
-export const writeBuffer = (text:string|Buffer, appendTo?:Buffer):Buffer=>{
-	let textBuf = Buffer.from(text);
+export const writeBuffer = (buf:string|Buffer, appendTo?:Buffer):Buffer=>{
+	let textBuf = typeof buf=='string'?Buffer.from(buf, "hex"):buf;
 	let lengthBuf = Buffer.alloc(4);
 	lengthBuf.writeUInt32LE(textBuf.length);
 	if(appendTo)
@@ -26,8 +26,9 @@ export const readBuffers = (buf:Buffer|string):Buffer[]=>{
 	let read = ()=>{
 		let length = input.readUInt16LE();
 		let end = 4+length;
-		//console.log("length", length, "end", end)
+		
 		let textBuf = input.slice(4, end);
+		//console.log("length", length, "end", end, textBuf)
 		bufs.push(textBuf);
 		input = input.slice(end)
 		if(input.length)
@@ -84,7 +85,7 @@ export const decrypt = (password:string, text:string)=>{
 	if(text.indexOf("{") >-1){
 		payload = JSON.parse(text)
 	}else{
-		let [salt, iv, data] = readBuffers(text).map(b=>b.toString());
+		let [salt, iv, data] = readBuffers(text).map(b=>b.toString("hex"));
 		payload.salt = salt;
 		payload.iv = iv;
 		payload.data = data;
